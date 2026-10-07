@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 版权材料与处理产物（绝不入库）
+样例/
+目标/
+处理输出/
+output/
+out/
+
+# 中间产物（可重跑生成）
+调研/preview/
+调研/baseline/
+调研/processed/
+调研/renders/
+调研/vectorize/
+
+# LaTeX 编译中间产物（book.pdf 也被 *.pdf 覆盖）
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
