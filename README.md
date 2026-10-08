@@ -56,7 +56,7 @@ python 工具/json_to_readable.py result.json --pdf "处理输出/扫描件_增�
 python 工具/detect_photos.py 处理输出/images          # 初筛 + 缩略图拼贴，目检后填跳过清单
 python 工具/vectorize_figures.py 处理输出/images --skip-list photos_skip.txt
 
-# 5. 导出 LaTeX 书稿并编译
+# 5. 导出 LaTeX 书稿并编译（--toc-columns 2 可让目录双栏排列，默认单栏）
 python 工具/json_to_tex.py result.json -o 处理输出/book.tex
 cd 处理输出 && xelatex -interaction=nonstopmode book.tex && xelatex -interaction=nonstopmode book.tex
 ```
@@ -68,7 +68,7 @@ cd 处理输出 && xelatex -interaction=nonstopmode book.tex && xelatex -interac
 | 工具 | 作用 |
 |---|---|
 | `工具/json_to_readable.py` | `result.json` → 阅读友好 Markdown + 图片导出（标题层级 / 自动目录 / 图注修复 / 重复块合并 / 幻觉循环截断 / 章节标题配对） |
-| `工具/json_to_tex.py` | `result.json` → ctexbook LaTeX（标题、公式、图表、图文混排全量规则；与上者共用解析内核） |
+| `工具/json_to_tex.py` | `result.json` → ctexbook LaTeX（标题、公式、图表、图文混排全量规则；与上者共用解析内核；目录栏数 `--toc-columns 1|2` 单栏默认 / 双栏〔标题跨栏 + multicols 条目两栏〕） |
 
 ### 输入侧
 

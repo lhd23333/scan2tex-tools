@@ -12,7 +12,7 @@ r"""MinerU JSON → ctexbook LaTeX 转换器（tex 交付版）。
   页码  → % p.N 注释
 
 用法:
-  python 工具/json_to_tex.py <result.json> [-o book.tex]
+  python 工具/json_to_tex.py <result.json> [-o book.tex] [--toc-columns 1|2]
 """
 from __future__ import annotations
 
@@ -548,6 +548,7 @@ PREAMBLE = r"""\documentclass[11pt,openany]{ctexbook}
 \usepackage{xurl}  % 表格/正文里的长 URL 允许任意断行
 \usepackage{extarrows}  % \xlongequal 等长箭头（MinerU 公式实测用到，见 测试记录 03）
 \usepackage{newunicodechar}
+@@TOC_PKGS@@
 % 文本模式裸 Unicode 希腊字母/符号 → 数学模式（Latin Modern 罗马体无这些字形。
 % 实测缺字：03 φ1 λ1 ω2 ➢2；04 ≈1 β1 ∈1 ∵1。已走 CJK 字体路由的 μθ 等维持不动）
 \newunicodechar{φ}{\ensuremath{\varphi}}
@@ -644,12 +645,35 @@ PREAMBLE = r"""\documentclass[11pt,openany]{ctexbook}
 
 \begin{document}
 \maketitle
-\tableofcontents
-\clearpage
+@@TOC_BLOCK@@
 
 """
 
 POSTAMBLE = "\n\\end{document}\n"
+
+# 目录块：单栏 = 原样 \tableofcontents（与旧版输出逐字节一致）；
+# 双栏 = 标题跨栏 + 条目两栏（book 类 \tableofcontents 内含 \clearpage，
+# 整块包进 multicols 会冲突且垂直平衡难看，故选标题在外、\@starttoc 在栏内）
+_TOC_BLOCK_1COL = "\\tableofcontents\n\\clearpage"
+_TOC_BLOCK_2COL = (
+    "\\makeatletter\n"
+    "\\chapter*{\\contentsname}\n"
+    "\\phantomsection\n"
+    "\\pdfbookmark[0]{\\contentsname}{toc}\n"
+    "\\begin{multicols}{2}\n"
+    "\\raggedcolumns\n"
+    "\\@starttoc{toc}\n"
+    "\\end{multicols}\n"
+    "\\makeatother\n"
+    "\\clearpage")
+
+
+def _toc_parts(toc_columns: int) -> tuple[str, str]:
+    """返回 (前置宏包, 目录块)。单栏前置为空串，替换时连行尾换行一起删。"""
+    if int(toc_columns) == 2:
+        return "\\usepackage{multicol}\n", _TOC_BLOCK_2COL
+    return "", _TOC_BLOCK_1COL
+
 
 # 强终止符：出现在段尾说明该段已完结，不参与跨页合并
 # 注意不含逗号/顿号——宁漏勿错（漏合只是两段分开，错合是语义串台）
@@ -697,7 +721,7 @@ def tag_cross_page_merges(pages_by_idx: dict) -> None:
                   f"+ p{b + 1}首 {nt[:12]!r}…")
 
 
-def convert(src: Path, out_tex: Path) -> Path:
+def convert(src: Path, out_tex: Path, toc_columns: int = 1) -> Path:
     data = json.loads(src.read_text(encoding="utf-8"))
 
     body: list[str] = []
@@ -1050,7 +1074,11 @@ def convert(src: Path, out_tex: Path) -> Path:
 
     title = src.parent.name or "MinerU 转换书稿"
     # 用 replace 而非 % 格式化：PREAMBLE 里 LaTeX 的 % 注释不会被 Python 误解析
-    tex = PREAMBLE.replace("@@TITLE@@", tex_escape(title)) + "".join(body) + POSTAMBLE
+    # 目录栏数：单栏替换后与旧版逐字节一致（@@TOC_PKGS@@ 连行尾换行一起删）
+    toc_pkgs, toc_block = _toc_parts(toc_columns)
+    pre = (PREAMBLE.replace("@@TOC_PKGS@@\n", toc_pkgs)
+           .replace("@@TOC_BLOCK@@", toc_block))
+    tex = pre.replace("@@TITLE@@", tex_escape(title)) + "".join(body) + POSTAMBLE
     out_tex.write_text(tex, encoding="utf-8")
     print(f"完成: {out_tex}")
     print(f"  标题 {stats['title']} | 公式 {stats['equation']} | "
@@ -1065,10 +1093,12 @@ def main():
     ap = argparse.ArgumentParser(description="MinerU JSON → ctexbook LaTeX")
     ap.add_argument("json_path", help="result.json 路径")
     ap.add_argument("-o", "--out", default=None, help="输出 .tex 路径（默认 json 同目录/book.tex）")
+    ap.add_argument("--toc-columns", type=int, choices=(1, 2), default=1,
+                    help="目录栏数：1=单栏（默认，输出与旧版一致）；2=双栏（标题跨栏、条目两栏）")
     args = ap.parse_args()
     src = Path(args.json_path)
     out = Path(args.out) if args.out else src.parent / "book.tex"
-    convert(src, out)
+    convert(src, out, args.toc_columns)
 
 
 if __name__ == "__main__":
