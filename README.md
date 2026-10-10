@@ -32,6 +32,7 @@
 | 组件 | 用途 | 备注 |
 |---|---|---|
 | Python 3.10+ | 全部工具 | 依赖：`pymupdf` `opencv-python-headless` `numpy` |
+| rapidocr-onnxruntime | `photo2scan.py` 方向判定（四象限 OCR 投票） | 与上述依赖同一环境安装即可 |
 | [MinerU](https://github.com/opendatalab/MinerU) | PDF → `result.json`（本工具链不负责 OCR） | 本地部署或官方 API 均可 |
 | mkbitmap + potrace | 插图矢量化（可选） | mkbitmap 与 potrace 同源（potrace 工具集）；各包管理器可装 |
 | TeX Live / MiKTeX | xelatex 编译 `book.tex` | 需 ctex、amsmath、longtable、fancyvrb、graphicx 等常用宏包 |
@@ -59,6 +60,10 @@ python 工具/vectorize_figures.py 处理输出/images --skip-list photos_skip.t
 # 5. 导出 LaTeX 书稿并编译（--toc-columns 2 可让目录双栏排列，默认单栏）
 python 工具/json_to_tex.py result.json -o 处理输出/book.tex
 cd 处理输出 && xelatex -interaction=nonstopmode book.tex && xelatex -interaction=nonstopmode book.tex
+
+# 6.（可选）另外两条输入线
+python 工具/photo2scan.py "样例/拍照页.jpg" --out-dir 处理输出            # 拍照图/PDF → 黑白扫描化
+python 工具/epub_to_tex.py "样例/某书.epub" -o 处理输出/epub_book      # EPUB → 直排成书 PDF + TeX
 ```
 
 ## 工具清单
@@ -69,12 +74,14 @@ cd 处理输出 && xelatex -interaction=nonstopmode book.tex && xelatex -interac
 |---|---|
 | `工具/json_to_readable.py` | `result.json` → 阅读友好 Markdown + 图片导出（标题层级 / 自动目录 / 图注修复 / 重复块合并 / 幻觉循环截断 / 章节标题配对） |
 | `工具/json_to_tex.py` | `result.json` → ctexbook LaTeX（标题、公式、图表、图文混排全量规则；与上者共用解析内核；目录栏数 `--toc-columns 1|2` 单栏默认 / 双栏〔标题跨栏 + multicols 条目两栏〕） |
+| `工具/epub_to_tex.py` | EPUB（calibre 产物形态）→ ctexbook LaTeX/PDF 直排：ncx 层级 → 章节映射、脚注 bigfoot 跨页（修超长注空页）、行内小图按 300dpi 语义内嵌；复用 `json_to_tex` 的导言区/转义/封面模板 |
 
 ### 输入侧
 
 | 工具 | 作用 |
 |---|---|
 | `工具/preprocess_scan.py` | 扫描增强：上采样 + 背景除法 OTSU 二值化（去灰底/透印）→ 重建同版式 PDF |
+| `工具/photo2scan.py` | 拍照图 / PDF → 黑白扫描化成品（方向归一 + deskew + 透视矫正 + 扫描化；仅支持平整页）；调用 `调研/矫正实验/scripts/` 与 `调研/扫描化实验/scripts/` 的辅助脚本 |
 | `工具/merge_doclib_json.py` | 合并 MinerU doclib 分片 JSON（先测几页再整书解析时，分片需合并成完整结果） |
 
 ### 插图侧
